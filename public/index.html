@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Socket App</title>
+  </head>
+  <body>
+    <div class="container">
+      <form>
+        <input id="messageInput" type="text" placeholder="Enter your message" />
+
+        <button id="sendButton">Send message</button>
+      </form>
+      <span id="typingHintSpan"></span>
+      <table id="chatTable">
+        <tbody></tbody>
+      </table>
+    </div>
+
+    <script src="/socket.io/socket.io.js"></script>
+    <script src="http://code.jquery.com/jquery-latest.min.js"></script>
+    <script>
+      $(document).ready(() => {
+        let sendButton = $("#sendButton");
+        let messageInput = $("#messageInput");  
+        let typingHintSpan = $("#typingHintSpan"); 
+        let chatTableBody = $("#chatTable tbody");
+
+        let socket = io("http://localhost:3000");
+
+        // List on message
+        socket.on("chat-message", (message) => {
+          console.log("message-received: " + message);
+          chatTableBody.append("<tr><td>" + message + "</td></tr>");
+        });
+
+        // List on message
+        socket.on("typing-start", () => { 
+            typingHintSpan.html("user is typing..");
+        });
+
+        // List on message
+        socket.on("typing-end", () => { 
+            typingHintSpan.html("user is typing..");
+        });
+
+
+        sendButton.click((e) => {
+          e.preventDefault();
+
+          let message = messageInput.val();
+
+          // Emit the message
+          socket.emit("chat-message", message);
+        });
+
+        messageInput.focus(() => {
+            socket.emit("typing-start");
+        });
+
+        messageInput.blur(() => {
+            socket.emit("typing-end");
+        });
+
+      });
+    </script>
+  </body>
+</html>
