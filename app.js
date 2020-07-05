@@ -27,9 +27,14 @@ io.on('connection', (socket) => {
         io.sockets.emit('chat-message', data);
     });
 
-    // Listen on typing
-    socket.on('typing', (data) => {
-        io.sockets.emit('typing');
+    // Listen on typing-start
+    socket.on('typing-start', (data) => {
+        io.sockets.emit('typing-start');
+    });
+
+    // Listen on typing-end
+    socket.on('typing-end', (data) => {
+        io.sockets.emit('typing-end');
     });
 });
 
