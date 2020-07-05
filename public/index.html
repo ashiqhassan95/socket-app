@@ -52,6 +52,7 @@
     <script src="https://code.jquery.com/jquery-3.3.1.slim.min.js" integrity="sha384-q8i/X+965DzO0rT7abK41JStQIAqVgRVzpbzo5smXKp4YfRvH+8abtTE1Pi6jizo" crossorigin="anonymous"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.14.3/umd/popper.min.js" integrity="sha384-ZMP7rVo3mIykV+2+9J3UJ46jBk0WLaUAdn689aCwoqbBJiSnjAK/l8WvCWPIPm49" crossorigin="anonymous"></script>
     <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.1.3/js/bootstrap.min.js" integrity="sha384-ChfqqxuZUCnJSK3+MXmPNIyE6ZbWh2IMqE241rYiqJxyMiZ6OW/JmZQ5stwEULTy" crossorigin="anonymous"></script>
+    <script src="https://momentjs.com/downloads/moment.js"></script>
     <script src="/socket.io/socket.io.js"></script>
 
     <script>
@@ -68,8 +69,29 @@
 
         let senderId = '';
         let recipientId = '';
+        let chatAddress = '';
 
         $(document).ready(() => {
+
+            moment.updateLocale('en', {
+                relativeTime: {
+                    future: "in %s",
+                    past: "%s ago",
+                    s: 'a few seconds',
+                    ss: '%d seconds',
+                    m: "a minute",
+                    mm: "%d minutes",
+                    h: "an hour",
+                    hh: "%d hours",
+                    d: "a day",
+                    dd: "%d days",
+                    M: "a month",
+                    MM: "%d months",
+                    y: "a year",
+                    yy: "%d years"
+                }
+            });
+
             connectButton.click((e) => {
                 e.preventDefault();
                 connect();
@@ -82,26 +104,11 @@
             });
 
             messageInput.keyup((event) => {
-                // if (!checkConnection()) {
-                //     return;
-                // }
-
-                // let data = messageInput.val().trim();
-                // let payload = {
-                //     sender: senderId
-                // };
-
-                // if (data === null || data === '') {
-                //     socket.emit('typing-end', payload);
-                //     return;
-                // }
-
-                // socket.emit('typing-start', payload);
-
                 if (event.which == 13) {
                     sendButton.click();
                 }
             });
+
             messageInput.focus(() => {
                 if (!checkConnection()) {
                     return;
@@ -127,6 +134,16 @@
 
                 socket.emit('typing-end', payload);
             });
+
+            window.setInterval(function() {
+                $('.chat-time').each((index, elem) => {
+                    let timestamp = $(elem).data('unix');
+                    let relativeTime = moment.unix(timestamp).fromNow();
+
+                    $(elem).html(' (' + relativeTime + ') ');
+                });
+
+            }, 1000);
         });
 
         function checkConnection() {
@@ -151,7 +168,7 @@
             recipientId = recipientInput.val().trim();
 
             let payload = {
-                query: { 
+                query: {
                     sender: senderId,
                     recipient: recipientId,
                 }
@@ -174,33 +191,46 @@
                 sender: senderId,
                 recipient: recipientId,
                 message: message,
+                timestamp: moment().unix(),
+                address: chatAddress,
             };
 
             // Emit the message
             socket.emit('chat-message', payload);
 
             // Add message to the chatList
-            addMessage(payload.message, payload.sender, 'left');
+            addMessage(payload.message, payload.sender, payload.timestamp, 'left');
 
             // Clear message textbox
             messageInput.val('');
         }
 
-        function addMessage(message, user, leftOrRight) {
+        function addMessage(message, user, timestamp, leftOrRight) {
 
             let textAlign = leftOrRight === 'right' ? 'text-right' : 'text-left';
             let liClass = 'list-group-item list-group-item-sm list-group-item-action ' + textAlign;
+            let relativeTime = moment.unix(timestamp).fromNow();
+            let timeSpan = '<span class="chat-time" data-unix="' + timestamp + '"> (' + relativeTime + ') </span>';
 
             if (leftOrRight === 'right') {
                 let userSpan = '<span class="text-success ml-1">:' + user + '</span>';
-                chatList.append('<li class="' + liClass + '">' + message + userSpan + '</li>');
+                chatList.append('<li class="' + liClass + '">' + timeSpan + message + userSpan + '</li>');
             } else {
                 let userSpan = '<span class="text-primary mr-1">' + user + ':</span>';
-                chatList.append('<li class="' + liClass + '">' + userSpan + message + '</li>');
+                chatList.append('<li class="' + liClass + '">' + userSpan + message + timeSpan + '</li>');
             }
         }
 
         function monitorSocket() {
+            // List on message
+            socket.on('connected', (room) => {
+                if ((room.sender === senderId && room.recipient === recipientId) 
+                || (room.recipient === senderId && room.sender === recipientId)) {
+                    console.log('Connected to ' + room.address);
+                    chatAddress = room.address;
+                }
+            });
+
             // List on message
             socket.on('typing-start', (payload) => {
                 let sender = payload.sender;
@@ -220,7 +250,7 @@
 
             // List on message
             socket.on('chat-message', (payload) => {
-                addMessage(payload.message, payload.sender, 'right');
+                addMessage(payload.message, payload.sender, payload.timestamp, 'right');
             });
         };
     </script>
