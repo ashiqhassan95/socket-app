@@ -28,13 +28,13 @@ io.on('connection', (socket) => {
     });
 
     // Listen on typing-start
-    socket.on('typing-start', (data) => {
-        io.sockets.emit('typing-start');
+    socket.on('typing-start ', (data) => {
+        io.sockets.emit('typing-start ');
     });
 
     // Listen on typing-end
-    socket.on('typing-end', (data) => {
-        io.sockets.emit('typing-end');
+    socket.on('typing-end ', (data) => {
+        io.sockets.emit('typing-end ');
     });
 });
 
