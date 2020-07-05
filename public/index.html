@@ -1,69 +1,229 @@
 <!DOCTYPE html>
 <html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Socket App</title>
-  </head>
-  <body>
-    <div class="container">
-      <form>
-        <input id="messageInput" type="text" placeholder="Enter your message" />
 
-        <button id="sendButton">Send message</button>
-      </form>
-      <span id="typingHintSpan"></span>
-      <table id="chatTable">
-        <tbody></tbody>
-      </table>
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+    <title>Socket App</title>
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.1.3/css/bootstrap.min.css" integrity="sha384-MCw98/SFnGE8fJT3GXwEOngsV7Zt27NXFoaoApmYm81iuXoPkFOJwJ8ERdknLPMO" crossorigin="anonymous">
+</head>
+
+<body class="bg-light">
+    <div class="container py-4">
+        <div class="row">
+            <div class="col">
+                <form>
+                    <div class="form-group row">
+                        <div class="col-md-5">
+                            <input id="senderInput" type="text" class="form-control" placeholder="Sender">
+                        </div>
+                        <div class="col-md-5">
+                            <input id="recipientInput" type="text" class="form-control" placeholder="Recipient">
+                        </div>
+                        <div class="col-md-2">
+                            <button id="connectButton" type="button" class="btn btn-success btn-block">Connect</button>
+                        </div>
+                    </div>
+                    <div class="form-group row">
+                        <div class="col-md-10">
+                            <input id="messageInput" class="form-control" type="text" placeholder="Enter your message" />
+                            <small id="typingHintSpan" class="invisible">user is typing..</small>
+                        </div>
+                        <div class="col-md-2">
+                            <button id="sendButton" type="button" class="btn btn-primary btn-block">Send message</button>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+        <div class="row">
+            <div class="col-md-10">
+                <ul id="chatList" class="list-group">
+                    <!-- <li class="list-group-item list-group-item-action"><span class="text-primary">Ashique: </span> Cras justo odio</li>
+                    <li class="list-group-item">Dapibus ac facilisis in</li>
+                    <li class="list-group-item">Morbi leo risus</li>
+                    <li class="list-group-item">Porta ac consectetur ac</li>
+                    <li class="list-group-item">Vestibulum at eros</li> -->
+                </ul>
+            </div>
+        </div>
     </div>
 
+    <script src="https://code.jquery.com/jquery-3.3.1.slim.min.js" integrity="sha384-q8i/X+965DzO0rT7abK41JStQIAqVgRVzpbzo5smXKp4YfRvH+8abtTE1Pi6jizo" crossorigin="anonymous"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.14.3/umd/popper.min.js" integrity="sha384-ZMP7rVo3mIykV+2+9J3UJ46jBk0WLaUAdn689aCwoqbBJiSnjAK/l8WvCWPIPm49" crossorigin="anonymous"></script>
+    <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.1.3/js/bootstrap.min.js" integrity="sha384-ChfqqxuZUCnJSK3+MXmPNIyE6ZbWh2IMqE241rYiqJxyMiZ6OW/JmZQ5stwEULTy" crossorigin="anonymous"></script>
     <script src="/socket.io/socket.io.js"></script>
-    <script src="http://code.jquery.com/jquery-latest.min.js"></script>
+
     <script>
-      $(document).ready(() => {
-        let sendButton = $("#sendButton");
-        let messageInput = $("#messageInput");  
-        let typingHintSpan = $("#typingHintSpan"); 
-        let chatTableBody = $("#chatTable tbody");
+        var socket = null;
+        let sendButton = $('#sendButton');
+        let connectButton = $('#connectButton');
 
-        let socket = io("http://localhost:3000");
+        let senderInput = $("#senderInput")
+        let recipientInput = $("#recipientInput")
+        let messageInput = $('#messageInput');
 
-        // List on message
-        socket.on("chat-message", (message) => {
-          console.log("message-received: " + message);
-          chatTableBody.append("<tr><td>" + message + "</td></tr>");
+        let typingHintSpan = $('#typingHintSpan');
+        let chatList = $("#chatList");
+
+        let senderId = '';
+        let recipientId = '';
+
+        $(document).ready(() => {
+            connectButton.click((e) => {
+                e.preventDefault();
+                connect();
+            });
+
+
+            sendButton.click((e) => {
+                e.preventDefault();
+                sendMessage();
+            });
+
+            messageInput.keyup((event) => {
+                // if (!checkConnection()) {
+                //     return;
+                // }
+
+                // let data = messageInput.val().trim();
+                // let payload = {
+                //     sender: senderId
+                // };
+
+                // if (data === null || data === '') {
+                //     socket.emit('typing-end', payload);
+                //     return;
+                // }
+
+                // socket.emit('typing-start', payload);
+
+                if (event.which == 13) {
+                    sendButton.click();
+                }
+            });
+            messageInput.focus(() => {
+                if (!checkConnection()) {
+                    return;
+                }
+
+                let data = messageInput.val().trim();
+                let payload = {
+                    sender: senderId
+                };
+
+                socket.emit('typing-start', payload);
+            });
+
+            messageInput.blur(() => {
+                if (!checkConnection()) {
+                    return;
+                }
+
+                let data = messageInput.val().trim();
+                let payload = {
+                    sender: senderId
+                };
+
+                socket.emit('typing-end', payload);
+            });
         });
 
-        // List on message
-        socket.on("typing-start",  () => { 
-            typingHintSpan.html("user is typing..");
-        });
+        function checkConnection() {
+            if (socket === null) {
+                return false;
+            }
 
-        // List on message
-        socket.on("typing-end", () => { 
-            typingHintSpan.html("");
-        });
+            return true;
+        }
 
+        function connect() {
+            if (!senderInput.val().trim()) {
+                alert("Sender id required");
+                return;
+            }
 
-        sendButton.click((e) => {
-          e.preventDefault();
+            if (!recipientInput.val().trim()) {
+                alert("Recipient id required");
+                return;
+            }
+            senderId = senderInput.val().trim();
+            recipientId = recipientInput.val().trim();
 
-          let message = messageInput.val();
+            let payload = {
+                query: { 
+                    sender: senderId,
+                    recipient: recipientId,
+                }
+            };
 
-          // Emit the message
-          socket.emit("chat-message", message);
-        });
+            socket = io('http://localhost:3000', payload);
+            alert("Connection successfull");
+            monitorSocket();
+        }
 
-        messageInput.focus(() => {
-            socket.emit("typing-start");
-        });
+        function sendMessage() {
+            if (!checkConnection()) {
+                alert('Please connect.');
+                return;
+            }
 
-        messageInput.blur(() => {
-            socket.emit("typing-end");
-        });
+            let message = messageInput.val();
 
-      });
+            let payload = {
+                sender: senderId,
+                recipient: recipientId,
+                message: message,
+            };
+
+            // Emit the message
+            socket.emit('chat-message', payload);
+
+            // Add message to the chatList
+            addMessage(payload.message, payload.sender, 'left');
+
+            // Clear message textbox
+            messageInput.val('');
+        }
+
+        function addMessage(message, user, leftOrRight) {
+
+            let textAlign = leftOrRight === 'right' ? 'text-right' : 'text-left';
+            let liClass = 'list-group-item list-group-item-sm list-group-item-action ' + textAlign;
+
+            if (leftOrRight === 'right') {
+                let userSpan = '<span class="text-success ml-1">:' + user + '</span>';
+                chatList.append('<li class="' + liClass + '">' + message + userSpan + '</li>');
+            } else {
+                let userSpan = '<span class="text-primary mr-1">' + user + ':</span>';
+                chatList.append('<li class="' + liClass + '">' + userSpan + message + '</li>');
+            }
+        }
+
+        function monitorSocket() {
+            // List on message
+            socket.on('typing-start', (payload) => {
+                let sender = payload.sender;
+                typingHintSpan.html(sender + ' is typing...');
+
+                typingHintSpan.addClass('visible');
+                typingHintSpan.removeClass('invisible');
+            });
+
+            // List on message
+            socket.on('typing-end', (payload) => {
+                let sender = payload.sender;
+
+                typingHintSpan.addClass('invisible');
+                typingHintSpan.removeClass('visible');
+            });
+
+            // List on message
+            socket.on('chat-message', (payload) => {
+                addMessage(payload.message, payload.sender, 'right');
+            });
+        };
     </script>
-  </body>
+</body>
+
 </html>
