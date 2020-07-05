@@ -37,12 +37,12 @@
 
         // List on message
         socket.on("typing-start",  () => { 
-            typingHintSpan.html("user is typing.. ");
+            typingHintSpan.html("user is typing..");
         });
 
         // List on message
-        socket.on("typing-end ", () => { 
-            typingHintSpan.html(" ");
+        socket.on("typing-end", () => { 
+            typingHintSpan.html("");
         });
 
 
