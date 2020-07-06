@@ -3,9 +3,10 @@ const app = express();
 const http = require('http').Server(app);
 const io = require('socket.io')(http);
 const moment = require('moment');
+const path = require('path');
 
 const publicDir = {
-    root: __dirname + '/public',
+    root: path.join(__dirname, 'public'),
 };
 
 // Routes
@@ -21,7 +22,7 @@ io.on('connection', (socket) => {
     // Get the chatID of the user and join in a room of the same chatID
     let sender = socket.handshake.query.sender;
     let recipient = socket.handshake.query.recipient;
-    let address = ''; 
+    let session = '';
 
     let room = rooms.find(room => (room.sender === sender && room.recipient === recipient) || (room.recipient === sender && room.sender === recipient));
 
@@ -36,48 +37,56 @@ io.on('connection', (socket) => {
     }
 
     console.log(rooms);
-    
-    address = room.address; 
 
-    socket.join(address);
+    // Assign sesstion to room address
+    session = room.address;
 
-    // Notify connected
-    io.emit('connected', room);
+    // Join sender 
+    socket.join(session);
 
-    // socket.join(sender);
+    // Notify sender that socket has connected to a session
+    socket.emit('connected', room); 
 
-    console.log(sender + ' connected to ' + address);
-
-    // console.log(io.sockets.clients());
+    console.log(sender + ' connected to ' + session); 
 
     // Whenever someone disconnects this piece of code executed
     socket.on('disconnect', function() {
-        console.log(sender + ' disconnected and room ' + address + ' destroyed');
-        socket.leave(address);
+        console.log(sender + ' disconnected and room ' + session + ' destroyed');
+        socket.leave(session);
     });
 
     // Listen on chat-message
     socket.on('chat-message', (data) => {
-        let chatAddress = data.address;
-        // Send message to all others except sender
-        // socket.broadcast.emit('chat-message', data);
+        // Retrive session from incoming payload
+        let session = data.address; 
 
-        // Send message to only that particular room
-        socket.in(chatAddress).broadcast.emit('chat-message', data);
+        // Send message to all participant in the room except sender 
+        socket.to(session).emit('chat-message', data);
+ 
     });
 
     // Listen on typing-start
     socket.on('typing-start', (data) => {
-        socket.broadcast.emit('typing-start', data);
+        // Retrive session from incoming payload
+        let session = data.address;
+
+        /// Notify to all participant in the room except sender 
+        // that sender start typing
+        socket.to(session).emit('typing-start', data);
     });
 
     // Listen on typing-end
     socket.on('typing-end', (data) => {
-        socket.broadcast.emit('typing-end', data);
+        // Retrive session from incoming payload
+        let session = data.address;
+
+        // Notify to all participant in the room except sender 
+        // that sender stop typing
+        socket.to(session).emit('typing-end', data);
     });
 });
 
-
-http.listen(3000, () => {
-    console.log('Server listening on http://localhost:3000')
+const port = process.env.PORT || 3000;
+http.listen(port, () => {
+    console.log('Server listening on http://localhost:' + port)
 });

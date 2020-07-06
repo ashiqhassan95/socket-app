@@ -71,8 +71,7 @@
         let recipientId = '';
         let chatAddress = '';
 
-        $(document).ready(() => {
-
+        $(document).ready(() => { 
             moment.updateLocale('en', {
                 relativeTime: {
                     future: "in %s",
@@ -224,6 +223,7 @@
         function monitorSocket() {
             // List on message
             socket.on('connected', (room) => {
+                console.log('flag');
                 if ((room.sender === senderId && room.recipient === recipientId) 
                 || (room.recipient === senderId && room.sender === recipientId)) {
                     console.log('Connected to ' + room.address);
